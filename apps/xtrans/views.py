@@ -15,14 +15,9 @@ def config(req):
     return render_to_response(req, template_path, {'form' : form})
 
 def config_submit(req):
-    c = MTurkConfig.objects.filter(current=True)
-    if c:
-        template_path = "xtrans/config_submit.html"
-        f = ConfigForm(instance=c)
-        return render_to_response(req, template_path, {'form':f})
-    else:
-        template_path = "xtrans/config_blank.html"
-        return render_to_response(req,template_path,{})
+    form = req.POST
+    print form['title']
+    
 
 def config_create(req):
     c = MTurkConfig()
@@ -71,7 +66,7 @@ def toggle(req,status):
     return render_to_response(req, template_path, {'status':status})
 
 def get_current_method():
-    return 'wwl'
+    return 'mturk'
 
 def get_all_methods():
     return 'holder'

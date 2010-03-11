@@ -6,6 +6,7 @@ core.*
 .project
 .pydevproject
 *.sqlite3
+#*
 .dump
 .databases
 *.db

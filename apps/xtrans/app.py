@@ -25,10 +25,9 @@ class App (rapidsms.app.App):
 				phone_number = message.connection.identity,
 				original_message = message.text,
 				translation_method = self.method,
-				
-				
 				)
-			result = translate(entry)
+			entry.save()
+			result = translate(entry.id)
 			
 	def cleanup (self, message):
 		"""Perform any clean up after all handlers have run in the
@@ -60,7 +59,32 @@ class App (rapidsms.app.App):
 	a method that takes an argument for the model id."""
 		
 	def mturk(self,msg_id):
-		return 1
+		mturk_backend = self.router.get_backend('mturk')
+		msg = Translation.objects.filter(id=msg_id)
+
+		if msg.has_been_translater():
+			return "ready"
+		else:
+			config = MTurkConfig.objects.filter(current=True)
+			user = AWSUser.objects.filter(id=config.AWS_user)
+			response = mturk_backend.get_translation(question_list = config.request + '\n' + msg.original_message,
+								 answer_style = config.answer_style,
+								 answer_options = config.answer_options,
+								 assignment_count = config.assignment_count,
+								 title = config.title,
+								 annotation = 'Annotation',
+								 description = config.description,
+								 keywords = config.keywords,
+								 reward = config.reward,
+								 lifetime = config.lifetime,
+								 duration = config.duration,
+								 approval_delay = config.approbal_delay,
+								 AWS_KEY = user.AWS_KEY,
+								 AWS_SECRET = user.AWS_SECRET,
+								 sandbox = config.sandbox,
+								 )
+								 
+		
 		
 	def wwl(self,msg_id):
 		return 1

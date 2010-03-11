@@ -17,13 +17,20 @@ class AWSUser(models.Model):
         return self.identifier
 
 class MTurkConfig(models.Model):
-    description = models.CharField(max_length=200)
+    aws_key = models.CharField(max_length=100, null=False)
+    aws_secret = models.CharField(max_length=100,null=False)
     title = models.CharField(max_length=100)
+    description = models.CharField(max_length=200)
+    keywords = models.CharField(max_length = 200)
     request = models.TextField()
-    current = models.BooleanField(null=False, default=False)
     reward = models.DecimalField(max_digits=6,decimal_places=2)
+    answer_style = models.SlugField()
+    answer_options = models.CharField(max_length=200)
+    lifetime = models.PositiveIntegerField()
+    duration = models.PositiveIntegerField()
+    current = models.BooleanField(null=False, default=False)
     assignment_count = models.IntegerField()
-    AWS_user = models.ForeignKey(AWSUser)
+    sandbox = models.BooleanField(null=False, default=False)
 
     @classmethod 
     def make_current(modelBase, config):

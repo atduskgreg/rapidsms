@@ -12,6 +12,8 @@ import backend
 from rapidsms import log
 from rapidsms import utils
 
+from apps.xtrans.models import *
+
 import textonic
 
 POLL_INTERVAL = 60
@@ -39,7 +41,7 @@ class Backend(Backend):
         else:
             self.sandbox = False
         
-    def getTranslation(self, **kwargs):
+    def get_translation(self, **kwargs):
         hit_args = {}
         response = {}
         hit_kwargs['annotation'] = 'Annotation'
@@ -128,7 +130,7 @@ class Backend(Backend):
                                         duration=_hit_args['assignment_count'],
                                         approval_delay=_hit_args['approval_delay'],
                                         hit_response=_hit_args['hit_response'])
-        return hit_gen.SubmitHIT(sandbox=self.sandbox)
+        return hit_gen.SubmitHIT(sandbox=sandbox)
 
     def run(self):
         hit_id = 0
