@@ -4,7 +4,7 @@
 import uuid
 import datetime
 from boto.mturk.connection import MTurkConnection
-from boto.mturk.question import Question, QuestionContent, AnswerSpecification, QuestionForm, SelectionAnswer
+from boto.mturk.question import Question, QuestionContent, AnswerSpecification, QuestionForm, SelectionAnswer, Overview, FreeTextAnswer
 
 
 class HITGenerator(object):
@@ -63,28 +63,59 @@ class HITGenerator(object):
         conn = MTurkConnection(host = self.host, aws_access_key_id = self.AWS_KEY, aws_secret_access_key = self.AWS_SECRET)
 
         answer_specification = AnswerSpecification(SelectionAnswer(style = self.answer_style, selections = self.answer_options))
+        
+        overview_content = """<p>Your task is to translate the Urdu sentences into English.  Please make sure that your English translation:</p>
+<ul>
+    <li>Is faithful to the original in both meaning and style</li>
+    <li>Is grammatical, fluent, and natural-sounding English</li>
+    <li>Does not add or delete information from the original text</li>
+    <li>Does not contain any spelling errors</li>
+</ul>
+<p>When creating your translation, please follow these guidelines:</p>
+<ul>
+    <li><b>Do not use any machine translation systems (like translation.babylon.com)</b></li>
+    <li><b>You may</b> look up a word on <a href="http://www.urduword.com/">an online dictionary</a> if you do not know its translation</li></ul>
+<p>Afterwards, we'll ask you a few quick questions about your language abilities.</p>
+"""
 
-        questions = []
-        for i in self.question_list:
-	    questions.append(Question(identifier=i[1], content = QuestionContent(i[0]), answer_spec = answer_specification))
+        overview = Overview()
+        overview.append('Title', 'Translate these sentences')
+        overview.append('FormattedContent', overview_content) 
+        
+        qc = QuestionContent()
+        the_text = "Some arabic Words."
+        qc.append('FormattedContent', u'<table><tr><td></td><td align="right" width="538">%s</td></tr></table>' % the_text)
 
-        question_form = QuestionForm(questions)
+        
+       # construct an answer field
+        fta = FreeTextAnswer()
+        ansp = AnswerSpecification(fta)
+        
+        q = Question(identifier=str(uuid.uuid4()),
+                     content=qc,
+                     answer_spec=ansp)
+        
+       # put question(s) in a list
+        ql = [q,q,q,q] # repeat question four times
 
-        self.hit_response = conn.create_hit(question = question_form,
-                                 lifetime = self.lifetime,
-                                 max_assignments = self.assignment_count,
-                                 title = self.title,
-                                 description = self.description,
-                                 keywords = self.keywords,
-                                 reward = self.reward,
-                                 duration = self.duration,
-                                 approval_delay = self.approval_delay,
-                                 annotation = self.annotation)
-
-            # Returns the HITId as a unicode string
-        self.HITId = self.hit_response.HITId
-        return self.HITId
-
+       # build question form with question list
+        qf = QuestionForm(ql, overview=overview)
+        
+        self.hit_response = conn.create_hit(question = qf,
+                                            lifetime = self.lifetime,
+                                            max_assignments = self.assignment_count,
+                                            title = self.title,
+                                            description = self.description,
+                                            keywords = self.keywords,
+                                            reward = self.reward,
+                                            )
+        
+        # Returns the HITId as a unicode string
+        print self.hit_response
+#        self.HITId = self.hit_response.HITId
+#        return self.HITId
+        return self.hit_response
+   
 class HITRetriever(object):
     """
     The HITRetriever class is used to retrieve a HIT and handle parsing the data from the ResponseSet.
@@ -121,10 +152,11 @@ class HITRetriever(object):
 
 	returned_data = []
 
-	for i in assignments_list:
-		this_assignment = []
-		for j in i.answers[0]:
-			qa_pair = [j.QuestionIdentifier, j.SelectionIdentifier]
-			this_assignment.append(qa_pair)
-		returned_data.append(this_assignment)
-	return returned_data
+	#for i in assignments_list:
+#		this_assignment = []
+#		for j in i.answers[0]:
+#			qa_pair = [j.QuestionIdentifier, j.SelectionIdentifier]
+#			this_assignment.append(qa_pair)
+#		returned_data.append(this_assignment)
+#	return returned_data
+        return assignments_list
