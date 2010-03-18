@@ -1,0 +1,13 @@
+ overview_content = """<p>Your task is to translate the Urdu sentences into English.  Please make sure that your English translation:</p>
+<ul>
+    <li>Is faithful to the original in both meaning and style</li>
+    <li>Is grammatical, fluent, and natural-sounding English</li>
+    <li>Does not add or delete information from the original text</li>
+    <li>Does not contain any spelling errors</li>
+</ul>
+<p>When creating your translation, please follow these guidelines:</p>
+<ul>
+    <li><b>Do not use any machine translation systems (like translation.babylon.com)</b></li>
+    <li><b>You may</b> look up a word on <a href="http://www.urduword.com/">an online dictionary</a> if you do not know its translation</li></ul>
+<p>Afterwards, we'll ask you a few quick questions about your language abilities.</p>
+"""

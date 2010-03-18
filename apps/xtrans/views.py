@@ -16,7 +16,28 @@ def config(req):
 
 def config_submit(req):
     form = req.POST
-    print form['title']
+    new_config = MTurkConfig()
+    config_change = 0
+    print form
+    for i in form:
+        if hasattr(new_config,i):
+            config_change = 1
+            new_field = ''
+            if i == 'current':
+                if form[i] == 'on':
+                    print "Setting Current to True."
+                    new_field = True
+                else:
+                    new_field = False
+            else:
+                new_field = form[i]
+            setattr(new_config,i,new_field)
+    if config_change == 1:
+        print "saving"
+        new_config.save()
+    template_path = "xtrans/mturk_submit.html"
+    return render_to_response(req, template_path, {})
+#    print form['title']
     
 
 def config_create(req):
@@ -28,14 +49,17 @@ def config_create(req):
 def config_view(req):
     c = MTurkConfig.objects.filter(current=True)
     if c:
-        f = ConfigForm(instance=c)
-        template_path = "xtrans/mturk_config.html"
-        return render_to_respone(req, template_path, {'form':f})
+        if c[0].overview is not None:            
+            content = c[0].overview
+        else:
+            content = "Hello.  No Content."
+        template_path = "xtrans/mturk_view.html"
+        return render_to_response(req, template_path, {'content':content})
     else:
         c = MTurkConfig()
         f = ConfigForm(instance=c)
-        template_path = "xtrans/mturk_config.html"
-        return render_to_response(req, template_path, {'form':f})
+    template_path = "xtrans/mturk_config.html"
+    return render_to_response(req, template_path, {'form':f})
 
 def app_index(req):
     current_method = get_current_method()
