@@ -22,13 +22,13 @@ class MTurkConfig(models.Model):
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=200)
     keywords = models.CharField(max_length = 200)
-    request = models.TextField()
+#    request = models.TextField()
     overview = models.TextField()
     reward = models.CharField(max_length=20,default="0.25")
-    answer_style = models.SlugField()
-    answer_options = models.CharField(max_length=200)
-    lifetime = models.CharField(max_length=200)
-    duration = models.CharField(max_length=200)
+#    answer_style = models.SlugField()
+#    answer_options = models.CharField(max_length=200)
+#    lifetime = models.CharField(max_length=200)
+#    duration = models.CharField(max_length=200)
     current = models.BooleanField(null=False, default=False)
     assignment_count = models.CharField(max_length=20, default="5")
     message_count = models.CharField(max_length=20, default="5")
@@ -63,10 +63,10 @@ class ConfigForm(ModelForm):
 class Translation(models.Model):
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     received_at = models.DateTimeField(default=datetime.now)
-    orginal_message = models.TextField(null=False)
-    translation_method = models.SlugField()
-    translator_id = models.CharField(max_length=64, blank=True, null=True)
-    instructions = generic.GenericForeignKey()
+    orginal_message = models.TextField(null=False) 
+    translation_method = models.SlugField() #method being used 
+    translator_id = models.CharField(max_length=64, blank=True, null=True) #id returned by translator
+    instructions = generic.GenericForeignKey() #Foriegn key to configuration 
     translation = models.TextField(null=True, default=None)
     
     @classmethod

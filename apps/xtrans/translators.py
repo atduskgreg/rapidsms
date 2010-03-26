@@ -6,4 +6,4 @@ methods = {'off':'Off',
            'wwl':'Worldwide Lexicon',
            'meedan':'Meedan',
            'human':'Live Translator'}
-default = 'off'
+default = 'mturk'

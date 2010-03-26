@@ -7,14 +7,11 @@ from datetime import datetime, timedelta
 from django import forms
 from django.http import HttpResponseRedirect
 from django.http import HttpResponse
+from django.template import Template
 import translators
 
-def config(req):
-    template_path = "xtrans/config.html"
-    form = ConfigForm()
-    return render_to_response(req, template_path, {'form' : form})
-
 def config_submit(req):
+    """Handle a new Configuration form."""
     form = req.POST
     new_config = MTurkConfig()
     config_change = 0
@@ -41,12 +38,14 @@ def config_submit(req):
     
 
 def config_create(req):
+    """Create a new configuration"""
     c = MTurkConfig()
     f = ConfigForm(instance=c)
     template_path = "xtrans/mturk_config.html"
     return render_to_response(req, template_path, {'form':f})
 
 def config_view(req):
+    """View current configuration"""
     c = MTurkConfig.objects.filter(current=True)
     if c:
         if c[0].overview is not None:            
@@ -55,11 +54,12 @@ def config_view(req):
             content = "Hello.  No Content."
         template_path = "xtrans/mturk_view.html"
         return render_to_response(req, template_path, {'content':content})
+        #return HttpResponse(content)
     else:
-        c = MTurkConfig()
-        f = ConfigForm(instance=c)
-    template_path = "xtrans/mturk_config.html"
-    return render_to_response(req, template_path, {'form':f})
+            f = ConfigForm(instance=c)
+            template_path = "xtrans/mturk_config.html"
+            return render_to_response(req, template_path, {'form':f})
+
 
 def app_index(req):
     current_method = get_current_method()
@@ -75,6 +75,9 @@ def app_index(req):
     template_path = "xtrans/index.html"
     return render_to_response(req, template_path, locals())
 
+"""These methods are meant to be called by way of the ajax app
+as a method for turning the system on and off"""
+
 def toggle_on(req):
     return toggle(req,True)
 
@@ -89,9 +92,5 @@ def toggle(req,status):
     template_path = "xtrans/index.html"
     return render_to_response(req, template_path, {'status':status})
 
-def get_current_method():
-    return 'mturk'
 
-def get_all_methods():
-    return 'holder'
 	

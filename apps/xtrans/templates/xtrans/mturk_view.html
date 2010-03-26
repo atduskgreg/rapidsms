@@ -1,5 +1,8 @@
 {% extends base_template %}
 {% block title %}XTrans Home{% endblock %}
 {% block content %}
+{% autoescape off %}
 {{ content }}
+{% endautoescape %}
+</p> Click <a href="/xtrans/">here </a>to return to the main menu.</p>
 {% endblock %}
