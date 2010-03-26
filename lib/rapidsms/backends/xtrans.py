@@ -12,10 +12,6 @@ import backend
 from rapidsms import log
 from rapidsms import utils
 
-from apps.xtrans.models import *
-
-import textonic
-
 POLL_INTERVAL = 60
 LOG_LEVEL_MAP = {
     'traffic':'info',
@@ -27,6 +23,8 @@ LOG_LEVEL_MAP = {
 }
 
 class Backend(Backend):
+    """The sole purpose of this backend is to trigger the 
+    xtrans app to check for completed translations."""
     _title = "xtrans"
 
     def configure(self, *args, **kwargs):

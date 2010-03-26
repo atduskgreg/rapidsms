@@ -60,9 +60,9 @@ def config_view(req):
             template_path = "xtrans/mturk_config.html"
             return render_to_response(req, template_path, {'form':f})
 
-
 def app_index(req):
-    current_method = get_current_method()
+    #This will not be hard coded.
+    current_method = 'mturk'
     method = ''
     if(current_method != 'off'):
         status = 'On'
@@ -71,7 +71,6 @@ def app_index(req):
     else:
         status = 'Off'
         is_on = False
-    all_methods = get_all_methods()
     template_path = "xtrans/index.html"
     return render_to_response(req, template_path, locals())
 
