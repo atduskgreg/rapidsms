@@ -4,7 +4,7 @@
 import uuid
 import datetime
 from boto.mturk.connection import MTurkConnection
-from boto.mturk.question import Question, QuestionContent, AnswerSpecification, QuestionForm, SelectionAnswer, Overview, FreeTextAnswer
+from boto.mturk.question import Question, QuestionContent, AnswerSpecification, QuestionForm, SelectionAnswer
 
 
 class HITGenerator(object):
@@ -15,10 +15,9 @@ class HITGenerator(object):
     that HITGenerator is not as flexible as it could be, but it also means that it is a relatively simple class to use.
     """
 
-    def __init__(self, AWS_KEY=None, AWS_SECRET=None, question_list=None,overview_content=None, 
-                 answer_options=None, title=None, description=None, keywords=None, answer_style = 'radiobutton',
-                 annotation = 'Annotation', reward=0.50, lifetime=60*60*24, assignment_count=None, 
-                 duration=60*60,approval_delay=60*60*12):
+    def __init__(self, AWS_KEY, AWS_SECRET, question_list, answer_options, title, description, keywords, answer_style = 'radiobutton',
+        annotation = 'Annotation', reward = 0.50, lifetime = 60*60*24, assignment_count = 10, duration = 60*60,
+        approval_delay = 60*60*12):
 
             # Connection attributes
         self.AWS_KEY = AWS_KEY # This is the AWS ID key for the user
@@ -29,7 +28,6 @@ class HITGenerator(object):
         
             # Quesion and answer formats
         self.question_list = question_list # A list of strings containing the text of the questions this HIT will be built from
-        self.overview_content = overview_content # An HTML formatted Overview.
         self.answer_style = answer_style # A string determining the type of answer, for Textonic HITs this must either be 'radiobutton'
             # or 'checkbox'
         self.answer_options = answer_options # A list of pairs of strings with the first value being the answer displayed in the HIT
@@ -61,40 +59,32 @@ class HITGenerator(object):
 
         if sandbox is 'true':
             self.host = 'mechanicalturk.sandbox.amazonaws.com'
+
         conn = MTurkConnection(host = self.host, aws_access_key_id = self.AWS_KEY, aws_secret_access_key = self.AWS_SECRET)
+
         answer_specification = AnswerSpecification(SelectionAnswer(style = self.answer_style, selections = self.answer_options))
-        overview = Overview()
-        overview.append('Title', self.title)
-        overview.append('FormattedContent', self.overview_content) 
-        the_text = "Some arabic Words."
-       # construct an answer field
-        fta = FreeTextAnswer()
-        ansp = AnswerSpecification(fta)
-        ql = []
-        for q in self.question_list:
-            qc = QuestionContent()
-            qc.append('FormattedContent', u'<table><tr><td></td><td align="left" width="538">%s</td></tr></table>' % q[0])
-            ql.append(Question(identifier=q[1],
-                               content=qc,
-                               answer_spec=ansp))
-        #q = Question(identifier=str(uuid.uuid4()),
-        #             content=qc,
-        #             answer_spec=ansp)
-        # build question form with question list
-        qf = QuestionForm(ql, overview=overview)
-        self.hit_response = conn.create_hit(question = qf,
-                                            lifetime = self.lifetime,
-                                            max_assignments = self.assignment_count,
-                                            title = self.title,
-                                            description = self.description,
-                                            keywords = self.keywords,
-                                            reward = self.reward,
-                                            )
-        # Returns the HITId as a unicode string
-#        self.HITId = self.hit_response.HITId
-#        return self.HITId
-        return self.hit_response
-   
+
+        questions = []
+        for i in self.question_list:
+	    questions.append(Question(identifier=i[1], content = QuestionContent(i[0]), answer_spec = answer_specification))
+
+        question_form = QuestionForm(questions)
+
+        self.hit_response = conn.create_hit(question = question_form,
+                                 lifetime = self.lifetime,
+                                 max_assignments = self.assignment_count,
+                                 title = self.title,
+                                 description = self.description,
+                                 keywords = self.keywords,
+                                 reward = self.reward,
+                                 duration = self.duration,
+                                 approval_delay = self.approval_delay,
+                                 annotation = self.annotation)
+
+            # Returns the HITId as a unicode string
+        self.HITId = self.hit_response.HITId
+        return self.HITId
+
 class HITRetriever(object):
     """
     The HITRetriever class is used to retrieve a HIT and handle parsing the data from the ResponseSet.
@@ -131,11 +121,10 @@ class HITRetriever(object):
 
 	returned_data = []
 
-	#for i in assignments_list:
-#		this_assignment = []
-#		for j in i.answers[0]:
-#			qa_pair = [j.QuestionIdentifier, j.SelectionIdentifier]
-#			this_assignment.append(qa_pair)
-#		returned_data.append(this_assignment)
-#	return returned_data
-        return assignments_list
+	for i in assignments_list:
+		this_assignment = []
+		for j in i.answers[0]:
+			qa_pair = [j.QuestionIdentifier, j.SelectionIdentifier]
+			this_assignment.append(qa_pair)
+		returned_data.append(this_assignment)
+	return returned_data

@@ -73,7 +73,7 @@ class HITGenerator(object):
         ql = []
         for q in self.question_list:
             qc = QuestionContent()
-            qc.append('FormattedContent', u'<table><tr><td></td><td align="left" width="538">%s</td></tr></table>' % q[0])
+            qc.append('FormattedContent', u'<table><tr><td></td><td align="right" width="538">%s</td></tr></table>' % q[0])
             ql.append(Question(identifier=q[1],
                                content=qc,
                                answer_spec=ansp))

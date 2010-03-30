@@ -63,12 +63,27 @@ class ConfigForm(ModelForm):
 class Translation(models.Model):
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     received_at = models.DateTimeField(default=datetime.now)
-    orginal_message = models.TextField(null=False) 
+    original_message = models.TextField(null=False) 
     translation_method = models.SlugField() #method being used 
     translator_id = models.CharField(max_length=64, blank=True, null=True) #id returned by translator
-    instructions = generic.GenericForeignKey() #Foriegn key to configuration 
     translation = models.TextField(null=True, default=None)
-    
+    content_type = models.ForeignKey(ContentType,null=True) 
+    content_id = models.PositiveIntegerField(null=True)
+    content_object = generic.GenericForeignKey('content_type','content_id') #Foriegn key to configuration 
+
     @classmethod
     def has_been_translated(self):
         return self.translation != None
+
+    @classmethod
+    def set_instructions(self, instance):
+        print "Setting instructions"
+        print instance
+        c = MTurkConfig()
+        self.content_type = ContentType.objects.get_for_model(type(c))
+        self.content_id = c.id
+        c = instance
+
+#    @classmethod
+    def get_instructions(self):
+        return self.content_object

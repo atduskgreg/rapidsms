@@ -6,7 +6,7 @@ from models import *
 from datetime import datetime
 import translators
 
-from amazon import textonic
+import textonic
 
 class App (rapidsms.app.App):
 
@@ -30,11 +30,18 @@ class App (rapidsms.app.App):
 				)
 			entry.save()
 			#Check whether have enough messages to make a translation request.
-			msg_load = check_msg_load()
+			msg_load = self.check_msg_load()
 			#Run translation request if there are enough messages.
-			if len(msg_load) > 1:
-				translate(msg_load)
+			print "len(msg_load) = %s" % (len(msg_load))
+			load_lim = 1
+			if self.method == 'mturk':
+				config = MTurkConfig.objects.get(current=True)
+				load_lim = config.message_count
+			if len(msg_load) <= load_lim:
+				print "Submitting Translation"
+				self.submit_translation(msg_load)
 			print "added new message."
+		return True
 
 	def cleanup (self, message):
 		"""Perform any clean up after all handlers have run in the
@@ -63,11 +70,11 @@ class App (rapidsms.app.App):
 				return msgs
 			else:
 				print "Not enough messages"
-				return ['Not Enough Messages']
+				return []
 		else:
-			return ['No Configuration']
+			return []
 			
-	def translate(self,msg_list):
+	def submit_translation(self,msg_list):
 		"""This method takes a list of messages to be translated and submits 
 		translation based on the current translation method."""
 		method = "_submit_" + self.method
@@ -88,10 +95,10 @@ class App (rapidsms.app.App):
 		by the xtrans backend."""
 		
 		print "XTrans checking submissions."
-		msg_list = Translation.objects.filter(translation=None)[:5]
-		if len(msg_list) > 
-		for msg in trans_list:
-			check_for_results(msg)
+		msg_list = Translation.objects.filter(translation=None)[:1]
+		if len(msg_list) > 0:
+			for msg in msg_list:
+				self.check_for_results(msg)
 			
 	def check_for_results(self, trans):
 		trans_method = "_check_" + trans.translation_method
@@ -114,25 +121,35 @@ class App (rapidsms.app.App):
 		for msg in msg_list:
 			ql.append((msg.original_message,msg.id))
 		#Textonic HITGenerator.  Loaded with settings from current MTurkConfiguration
+		options = [("This is an option","option_id")]
+		aws_key = str(config.aws_key)
+		aws_secret = str(config.aws_secret)
 		hitter = textonic.HITGenerator(question_list = ql,
-					       answer_style = config.answer_style,
-					       answer_options = config.answer_options,
+					       #answer_style = config.answer_style,
+					       #answer_options = config.answer_options,
 					       assignment_count = config.assignment_count,
-					       message_count = config.message_count,
+					       #message_count = config.message_count,
+					       overview_content = config.overview,
+					       answer_options = options,
 					       title = config.title,
 					       description = config.description,
 					       keywords = config.keywords,
 					       reward = config.reward,
-					       lifetime = config.lifetime,
-					       duration = config.duration,
-					       AWS_KEY =  config.AWS_KEY,
-					       AWS_SECRET = config.AWS_SECRET,
+					       #lifetime = config.lifetime,
+					       #duration = config.duration,
+					       AWS_KEY =  aws_key,
+					       AWS_SECRET = aws_secret,
 					       )
 		#Submit HIT
-		response = hitter.SubmitHIT(sandbox=config.sandbox)
+		sandbox = 'false'
+		if config.sandbox:
+			sandbox = 'true'
+		res = hitter.SubmitHIT(sandbox=sandbox)
+		print res[0].HITId
 		for msg in msg_list:
+			msg.translator_id = res[0].HITId
 			msg.translation_method = 'mturk'
-			msg.translator_id = response
+			msg.set_instructions(config)
 			msg.save()
 
 	def _check_mturk(self,msg):
@@ -141,17 +158,25 @@ class App (rapidsms.app.App):
 		to keep.  Each completed Hit contain message_count (default 5)
 		translations from assignment_count (default 5) turkers."""
 		#load MTurkConfig of current msg
-		config = MTurkConfig.objects.get(id=msg.instructions)
-		hit_id = msg.translator_id
-		sandbox = False
+		config = msg.get_instructions()
+		sandbox = 'false'
 		if config.sandbox:
-			sandbox = True
+			print "Playing in Sandbox"
+			sandbox = 'true'
 		#Check whether HIT has been completed
-		hit_ret = mturk.HITRetriever(config.aws_key,config.aws_secret,sandbox,hit_id)
-		print hit_ret
-		if len(hit_ret) == config.assignment_count:
+		hit_ret = mturk.HITRetriever(config.aws_key,config.aws_secret,sandbox)
+		ret = hit_ret.SubmitHIT(sandbox=sandbox)
+		if len(ret) == config.assignment_count:
 			#Do something with translated messages.
-			print have translations
+			for ans in ret:
+				for form in ans.answers[0]:
+					question_id = form[1]
+					answer = form[0]
+					orig_msg = Translation.objects.get(id=question_id)
+					orig_msg.translation = answer
+					orig_msg.save()
+					print "Got an answer to - %s - %s" % (orig_msg.original_message, answer)
+
 
 
 #	def _submit_wwl(self,msg_list):

@@ -15,10 +15,9 @@ class HITGenerator(object):
     that HITGenerator is not as flexible as it could be, but it also means that it is a relatively simple class to use.
     """
 
-    def __init__(self, AWS_KEY=None, AWS_SECRET=None, question_list=None,overview_content=None, 
-                 answer_options=None, title=None, description=None, keywords=None, answer_style = 'radiobutton',
-                 annotation = 'Annotation', reward=0.50, lifetime=60*60*24, assignment_count=None, 
-                 duration=60*60,approval_delay=60*60*12):
+    def __init__(self, AWS_KEY, AWS_SECRET, question_list, answer_options, title, description, keywords, answer_style = 'radiobutton',
+        annotation = 'Annotation', reward = 0.50, lifetime = 60*60*24, assignment_count = 10, duration = 60*60,
+        approval_delay = 60*60*12):
 
             # Connection attributes
         self.AWS_KEY = AWS_KEY # This is the AWS ID key for the user
@@ -29,7 +28,6 @@ class HITGenerator(object):
         
             # Quesion and answer formats
         self.question_list = question_list # A list of strings containing the text of the questions this HIT will be built from
-        self.overview_content = overview_content # An HTML formatted Overview.
         self.answer_style = answer_style # A string determining the type of answer, for Textonic HITs this must either be 'radiobutton'
             # or 'checkbox'
         self.answer_options = answer_options # A list of pairs of strings with the first value being the answer displayed in the HIT
@@ -61,27 +59,48 @@ class HITGenerator(object):
 
         if sandbox is 'true':
             self.host = 'mechanicalturk.sandbox.amazonaws.com'
+
         conn = MTurkConnection(host = self.host, aws_access_key_id = self.AWS_KEY, aws_secret_access_key = self.AWS_SECRET)
+
         answer_specification = AnswerSpecification(SelectionAnswer(style = self.answer_style, selections = self.answer_options))
+        
+        overview_content = """<p>Your task is to translate the Urdu sentences into English.  Please make sure that your English translation:</p>
+<ul>
+    <li>Is faithful to the original in both meaning and style</li>
+    <li>Is grammatical, fluent, and natural-sounding English</li>
+    <li>Does not add or delete information from the original text</li>
+    <li>Does not contain any spelling errors</li>
+</ul>
+<p>When creating your translation, please follow these guidelines:</p>
+<ul>
+    <li><b>Do not use any machine translation systems (like translation.babylon.com)</b></li>
+    <li><b>You may</b> look up a word on <a href="http://www.urduword.com/">an online dictionary</a> if you do not know its translation</li></ul>
+<p>Afterwards, we'll ask you a few quick questions about your language abilities.</p>
+"""
+
         overview = Overview()
-        overview.append('Title', self.title)
-        overview.append('FormattedContent', self.overview_content) 
+        overview.append('Title', 'Translate these sentences')
+        overview.append('FormattedContent', overview_content) 
+        
+        qc = QuestionContent()
         the_text = "Some arabic Words."
+        qc.append('FormattedContent', u'<table><tr><td></td><td align="right" width="538">%s</td></tr></table>' % the_text)
+
+        
        # construct an answer field
         fta = FreeTextAnswer()
         ansp = AnswerSpecification(fta)
-        ql = []
-        for q in self.question_list:
-            qc = QuestionContent()
-            qc.append('FormattedContent', u'<table><tr><td></td><td align="left" width="538">%s</td></tr></table>' % q[0])
-            ql.append(Question(identifier=q[1],
-                               content=qc,
-                               answer_spec=ansp))
-        #q = Question(identifier=str(uuid.uuid4()),
-        #             content=qc,
-        #             answer_spec=ansp)
-        # build question form with question list
+        
+        q = Question(identifier=str(uuid.uuid4()),
+                     content=qc,
+                     answer_spec=ansp)
+        
+       # put question(s) in a list
+        ql = [q,q,q,q] # repeat question four times
+
+       # build question form with question list
         qf = QuestionForm(ql, overview=overview)
+        
         self.hit_response = conn.create_hit(question = qf,
                                             lifetime = self.lifetime,
                                             max_assignments = self.assignment_count,
@@ -90,7 +109,9 @@ class HITGenerator(object):
                                             keywords = self.keywords,
                                             reward = self.reward,
                                             )
+        
         # Returns the HITId as a unicode string
+        print self.hit_response
 #        self.HITId = self.hit_response.HITId
 #        return self.HITId
         return self.hit_response
