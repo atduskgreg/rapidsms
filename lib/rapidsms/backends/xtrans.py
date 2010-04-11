@@ -12,7 +12,7 @@ import backend
 from rapidsms import log
 from rapidsms import utils
 
-POLL_INTERVAL = 60
+POLL_INTERVAL = 2
 LOG_LEVEL_MAP = {
     'traffic':'info',
     'read':'info',
@@ -28,12 +28,17 @@ class Backend(Backend):
     _title = "xtrans"
 
     def configure(self, *args, **kwargs):
+        self.interval = 2
+        self.timeout = 10
         print "XTrans ON"
 
     def run(self):
-        for app in self.router.apps:
-            if app.slug == 'xtrans':
-                app.check_submissions()
+        while self.running:
+            print "XTrans backend says hello."
+            for app in self.router.apps:
+                if app.slug == 'xtrans':
+                    app.check_submissions()
+            time.sleep(self.interval)
 
     def start(self):
         print "MTurk starting."

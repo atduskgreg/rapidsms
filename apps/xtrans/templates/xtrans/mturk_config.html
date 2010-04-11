@@ -2,7 +2,11 @@
 {% block title %}XTrans Home{% endblock %}
 {% block content %}
 <h2>XTrans Configuration</h2>
+{% if edit %}
 <form method="POST" action="/xtrans/config/submit">
+{% else %}
+<form method="POST" action="/xtrans/config/{{id}}/edit">
+{% endif %}
   <table>
     {% for field in form %}
     <tr>

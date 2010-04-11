@@ -18,7 +18,7 @@ class HITGenerator(object):
     def __init__(self, AWS_KEY=None, AWS_SECRET=None, question_list=None,overview_content=None, 
                  answer_options=None, title=None, description=None, keywords=None, answer_style = 'radiobutton',
                  annotation = 'Annotation', reward=0.50, lifetime=60*60*24, assignment_count=None, 
-                 duration=60*60,approval_delay=60*60*12,is_numeral=None):
+                 duration=60*60,approval_delay=60*60*12):
 
             # Connection attributes
         self.AWS_KEY = AWS_KEY # This is the AWS ID key for the user
@@ -49,8 +49,7 @@ class HITGenerator(object):
             # 1 hour
         self.approval_delay = approval_delay # The amount of time in seconds before the system automatically approves payment on a
             # completed HIT
-        self.hit_response = None
-        self.is_numeral = is_numeral
+        self.hit_response = None;
 
     def SubmitHIT(self, sandbox = 'false'):
         """
@@ -69,15 +68,12 @@ class HITGenerator(object):
         overview.append('FormattedContent', self.overview_content) 
         the_text = "Some arabic Words."
        # construct an answer field
-        if self.is_numeral:
-            fta = FreeTextAnswer(is_numeric=True,min_value=1,max_value=len(self.questions_list))
-        else:
-            fta = FreeTextAnswer()
+        fta = FreeTextAnswer()
         ansp = AnswerSpecification(fta)
         ql = []
         for q in self.question_list:
             qc = QuestionContent()
-            qc.append('FormattedContent', u'<table><tr><td></td><td align="left" width="538">%s</td></tr></table>' % q[0])
+            qc.append('FormattedContent', u'<table><tr><td></td><td align="right" width="538">%s</td></tr></table>' % q[0])
             ql.append(Question(identifier=q[1],
                                content=qc,
                                answer_spec=ansp))

@@ -1,0 +1,32 @@
+{% extends base_template %}
+{% block title %}Incoming Messages{% endblock %}
+{% block content %}
+<a href="/xtrans/">Return to Main Menu</a>
+<h2> Incoming Messages</h2>
+<table width="100%">
+  <thead>
+    <tr>
+      <th></th>
+      <th></th>
+      <th>Phone Number</th>
+      <th>Received At</th>
+      <th>Original Message</th>
+      <th>Translation Method</th>
+      <th>Translation</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for msg in messages %}
+    <tr>
+      <td><a href="/xtrans/messages/{{msg.id}}/view">view</a></td>
+      <td><a href="/xtrans/messages/{{msg.id}}/delete">delete</a></td>
+      <td>{{msg.phone_number}}</td>
+      <td>{{msg.received_at|date:"d-M-Y H:m"}}</td>
+      <td>{{msg.original_message}}</td>
+      <td>{{msg.translation_method}}</td>
+      <td>{{msg.translation}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

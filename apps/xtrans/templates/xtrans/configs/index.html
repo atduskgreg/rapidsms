@@ -1,0 +1,46 @@
+{% extends base_template %}
+{% block title %}Incoming Messages{% endblock %}
+{% block content %}
+<a href="/xtrans/">Return to Main Menu</a>
+<h2>Mechanical Turk Configurations</h2>
+<table width="100%">
+  <thead>
+    <tr>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th>Title</th>
+      <th>Description</th>
+      <th>Reward</th>
+      <th>Assignment Count</th>
+      <th>Message Count</th>
+      <th>Current</th>
+      <th>Sandbox</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in configs %}
+    <tr>
+      <td><a href="/xtrans/config/{{c.id}}/preview">preview</a></td>
+      <td><a href="/xtrans/config/{{c.id}}/edit">edit</a></td>
+      <td><a href="/xtrans/config/{{c.id}}/delete">delete</a></td>
+      <td>{{c.title}}</td>
+      <td>{{c.description}}</td>
+      <td>{{c.reward}}</td>
+      <td>{{c.assignment_count}}</td>
+      <td>{{c.message_count}}</td>
+      {% if c.current %}
+      <td>yes</td>
+      {% else %}
+      <td>no</td>
+      {% endif %}
+      {% if c.sandbox %}
+      <td>yes</td>
+      {% else %}
+      <td>no</td>
+      {% endif %}
+    </tr>
+   {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
