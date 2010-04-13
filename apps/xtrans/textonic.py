@@ -4,7 +4,7 @@
 import uuid
 import datetime
 from boto.mturk.connection import MTurkConnection
-from boto.mturk.question import Question, QuestionContent, AnswerSpecification, QuestionForm, SelectionAnswer, Overview, FreeTextAnswer
+from boto.mturk.question import Question, QuestionContent, AnswerSpecification, QuestionForm, SelectionAnswer, Overview, FreeTextAnswer, SelectionAnswer
 
 
 class HITGenerator(object):
@@ -70,13 +70,19 @@ class HITGenerator(object):
         the_text = "Some arabic Words."
        # construct an answer field
         if self.is_numeral:
-            fta = FreeTextAnswer(is_numeric=True,min_value=1,max_value=len(self.questions_list))
+            sels = []
+            for i in range(0,len(self.question_list)):
+                print self.question_list
+                sels.append((str(i+1),str(i+1)))
+                print sels
+            af = SelectionAnswer(min=1,max=len(sels) + 1,style='dropdown',selections=sels)
         else:
-            fta = FreeTextAnswer()
-        ansp = AnswerSpecification(fta)
+            af = FreeTextAnswer()
+        ansp = AnswerSpecification(af)
         ql = []
         for q in self.question_list:
             qc = QuestionContent()
+#            if not self.is_numeral:
             qc.append('FormattedContent', u'<table><tr><td></td><td align="left" width="538">%s</td></tr></table>' % q[0])
             ql.append(Question(identifier=q[1],
                                content=qc,

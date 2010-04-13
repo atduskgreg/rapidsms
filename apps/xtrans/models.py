@@ -65,6 +65,7 @@ class ConfigForm(ModelForm):
 class Translation(models.Model):
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     received_at = models.DateTimeField(default=datetime.now)
+    translated_at = models.DateTimeField(null=True)
     original_message = models.TextField(null=False) 
     translation_method = models.SlugField() #method being used
     translator_id = models.CharField(max_length=64, blank=True,null=True,default=None)
@@ -74,4 +75,9 @@ class Translation(models.Model):
     @classmethod
     def has_been_translated(self):
         return self.translation != None
-
+    
+class MTurkTranslation(models.Model):
+    translation_id = models.PositiveIntegerField(blank=False,null=False)
+    cost = models.CharField(max_length=20, default="0.0")
+    time = models.CharField(max_length=64, blank=True, null=True)
+    config_list = models.CharField(max_length=200,blank=True,null=True)

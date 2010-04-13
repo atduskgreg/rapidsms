@@ -14,7 +14,7 @@
       <th>Reward</th>
       <th>Assignment Count</th>
       <th>Message Count</th>
-      <th>Current</th>
+      <th>Order</th>
       <th>Sandbox</th>
     </tr>
   </thead>
@@ -29,11 +29,7 @@
       <td>{{c.reward}}</td>
       <td>{{c.assignment_count}}</td>
       <td>{{c.message_count}}</td>
-      {% if c.current %}
-      <td>yes</td>
-      {% else %}
-      <td>no</td>
-      {% endif %}
+      <td>{{c.order}}</td>
       {% if c.sandbox %}
       <td>yes</td>
       {% else %}

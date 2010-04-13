@@ -12,23 +12,13 @@ import backend
 from rapidsms import log
 from rapidsms import utils
 
-POLL_INTERVAL = 2
-LOG_LEVEL_MAP = {
-    'traffic':'info',
-    'read':'info',
-    'write':'info',
-    'debug':'debug',
-    'warn':'warning',
-    'error':'error'
-}
-
 class Backend(Backend):
     """The sole purpose of this backend is to trigger the 
     xtrans app to check for completed translations."""
     _title = "xtrans"
 
     def configure(self, *args, **kwargs):
-        self.interval = 2
+        self.interval = 30
         self.timeout = 10
         print "XTrans ON"
 

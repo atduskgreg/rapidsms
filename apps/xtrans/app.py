@@ -23,12 +23,14 @@ class App (rapidsms.app.App):
 	def handle (self, message):
 		"""Add your main application logic in the handle phase."""
 		#Take incoming message and create translation model.
+		print "Got Message"
 		if self.method != 'off':
 			entry = Translation(
 				phone_number = message.connection.identity,
 				original_message = message.text,
 				)
 			entry.save()
+			print "Submitting message"
 			#Check whether have enough messages to make a translation request.
 			self.submit_translation(entry.id)
 		return True
@@ -71,7 +73,18 @@ class App (rapidsms.app.App):
 		by the xtrans backend."""
 		
 		print "XTrans checking submissions."
-		msg_list = Translation.objects.filter(translation=None)[:5]
+		msg_all = Translation.objects.filter(translation=None)
+		msg_list = []
+		tmp_tracker = []
+		for m in msg_all:
+			tmp_method = m.translator_id
+			if tmp_method in tmp_tracker:
+				#print "Already found this hit."
+				continue
+			msg_list.append(m)
+			tmp_tracker.append(tmp_method)
+			if len(msg_list) > 5:
+				break
 		if len(msg_list) > 0:
 			for msg in msg_list:
 				self.check_for_results(msg)
@@ -94,7 +107,7 @@ class App (rapidsms.app.App):
 		msg_list = self.check_msg_load()
 #Make message list that consistes of tuples containing message text and id.
 		if(msg_list):
-			send_HIT(msg_list)
+			self.send_HIT(msg_list)
 
 	def _check_mturk(self,msg):
 		"""Method to check Mechanical Turk for completed HIT's.
@@ -118,23 +131,27 @@ class App (rapidsms.app.App):
 			#Do something with translated messages.
 			for ans in ret:
 #				print "I am here"
+				answer_list = []
 				question_id = ans.answers[0][0].QuestionIdentifier
+				if config.numeric:
+					answer = ans.answers
 				answer = ans.answers[0][0].FreeText
 				added = 0
-				for k in d.keys():
+				for k in hitsers.keys():
 					if k == question_id:
 						hitsers[k].append(answer)
 						added = 1
-				if !added:
+				if added == 0:
 					hitsers[question_id] = [answer]
-		next_step(hitsers)
+		self.next_step(hitsers)
 				#orig_msg = Translation.objects.get(id=question_id)
 				#orig_msg.translation = answer
 				#orig_msg.save()
 				#print "Got an answer to - %s - %s" % (orig_msg.original_message, answer)
 
-	def send_HIT(self,msg_list,order=1,qu_id=None):
-		config = MTurkConfig.objects.get(order=c_num)
+	def send_HIT(self,msg_list,order="1",qu_id=None):
+		config = MTurkConfig.objects.filter(order=str(order))[0]
+		print config
 		ql = []
 		for msg in msg_list:
 			if(qu_id):
@@ -160,6 +177,7 @@ class App (rapidsms.app.App):
 						       #duration = config.duration,
 						       AWS_KEY =  aws_key,
 						       AWS_SECRET = aws_secret,
+						       is_numeral = config.numeric
 						       )
 		#Submit HIT
 			sandbox = 'false'
@@ -179,13 +197,17 @@ class App (rapidsms.app.App):
 			orig_msg = Translation.objects.get(id=h)
 			translations = hitsers[h]
 			config = MTurkConfig.objects.get(id=orig_msg.translator_config)
-			next = int(config.count) + 1
-			next_config = MTurkConfig.objects.get(id=str(next))
+			next = int(config.order) + 1
+			next_config = MTurkConfig.objects.filter(order=str(next))
 			if next_config:
-				send_HIT(translations,next_config,q_id=h)
-			for t in translations:
-				
-
+				self.send_HIT(translations,next_config[0].order,qu_id=h)
+			else:
+				if len(translations) > 1:
+					for t in translations:
+						orig_msg.translation = orig_msg.translation + "|" + t
+				else:
+					orig_msg.translation = translations[0]
+				orig_msg.translated_at = datetime.now()
 
 	def check_msg_load(self):
 		"""Check if the number of untranslated messages has reached the

@@ -3,9 +3,9 @@
 {% block content %}
 <h2>XTrans Configuration</h2>
 {% if edit %}
-<form method="POST" action="/xtrans/config/submit">
+<form method="POST" action="/xtrans/config/{{edit}}/edit">
 {% else %}
-<form method="POST" action="/xtrans/config/{{id}}/edit">
+b<form method="POST" action="/xtrans/config/submit">
 {% endif %}
   <table>
     {% for field in form %}

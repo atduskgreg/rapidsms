@@ -10,13 +10,10 @@ from django.http import HttpResponse
 from django.template import Template
 import translators
 
-def config_submit(req,id):
+def config_submit(req):
     """Handle a new Configuration form."""
     form = req.POST
-    if id:
-        new_config = MTurkConfig.objects.get(id=id)
-    else:
-        new_config = MTurkConfig()
+    new_config = MTurkConfig()
     config_change = 0
     print form
     for i in form:
@@ -51,7 +48,7 @@ def config_create(req):
     c = MTurkConfig()
     f = ConfigForm(instance=c)
     template_path = "xtrans/mturk_config.html"
-    return render_to_response(req, template_path, {'form':f})
+    return render_to_response(req, template_path, {'form':f,'edit':None})
 
 def config_view(req,id=None):
     """View current configuration"""
@@ -62,16 +59,17 @@ def config_view(req,id=None):
         else:
             content = "Hello, No Content"
     else:
-        c = MTurkConfig.objects.filter(current=True)
+        c = MTurkConfig.objects.filter(count="0")
         if c:
             if c[0].overview is not None:            
                 content = c[0].overview
             else:
                 content = "Hello.  No Content."
         else:
+            c = MTurkConfig()
             f = ConfigForm(instance=c)
             template_path = "xtrans/mturk_config.html"
-            return render_to_response(req, template_path, {'form':f})
+            return render_to_response(req, template_path, {'form':f,'edit':None})
     template_path = "xtrans/mturk_view.html"
     return render_to_response(req, template_path, {'content':content})
         #return HttpResponse(content)
@@ -81,17 +79,29 @@ def config_index(req):
     all = MTurkConfig.objects.all()
     return render_to_response(req,template_path,{'configs':all})
 
-def config_edit(req,id):
-    if req.method == "POST":
-        form = req.post
-        template_path = "xtrans/mturk_submit"
-        print form.id
-        return render_to_response(req,template_path,{})
+def config_edit(req,id=None):
+    form = ConfigForm(req.POST or None,
+                      instance=id and MTurkConfig.objects.get(id=id))
+
+    if req.method == 'POST' and form.is_valid():
+        form.save()
+        #template_path = "xtrans/configs/index.html"
+        #return render_to_response(req,template_path,{})
+        return config_index(req)
     template_path = "xtrans/mturk_config.html"
-    c = MTurkConfig.objects.get(id=id)
-    form = ConfigForm(instance=c)
-    print form
-    return render_to_response(req,template_path,{'form':c,'edit':1})
+    return render_to_response(req,template_path,{'form':form,'edit':id})
+#    if req.method == "POST":
+#        form = req.post
+#        template_path = "xtrans/mturk_submit"
+#       print form.id
+#        return render_to_response(req,template_path,{})
+#    template_path = "xtrans/mturk_config.html"
+#    c = MTurkConfig.objects.get(id=id)
+#    form = ConfigForm(instance=c)
+#    print form
+#    return render_to_response(req,template_path,{'form':c,'edit':1})
+    
+
 
 def config_delete(req,id):
     template_path = "xtrans/configs/index.html"

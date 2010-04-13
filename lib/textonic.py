@@ -4,7 +4,7 @@
 import uuid
 import datetime
 from boto.mturk.connection import MTurkConnection
-from boto.mturk.question import Question, QuestionContent, AnswerSpecification, QuestionForm, SelectionAnswer, Overview, FreeTextAnswer
+from boto.mturk.question import Question, QuestionContent, AnswerSpecification, QuestionForm, SelectionAnswer, Overview, FreeTextAnswer, SelectionAnswer
 
 
 class HITGenerator(object):
@@ -18,7 +18,7 @@ class HITGenerator(object):
     def __init__(self, AWS_KEY=None, AWS_SECRET=None, question_list=None,overview_content=None, 
                  answer_options=None, title=None, description=None, keywords=None, answer_style = 'radiobutton',
                  annotation = 'Annotation', reward=0.50, lifetime=60*60*24, assignment_count=None, 
-                 duration=60*60,approval_delay=60*60*12):
+                 duration=60*60,approval_delay=60*60*12,is_numeral=None):
 
             # Connection attributes
         self.AWS_KEY = AWS_KEY # This is the AWS ID key for the user
@@ -49,7 +49,8 @@ class HITGenerator(object):
             # 1 hour
         self.approval_delay = approval_delay # The amount of time in seconds before the system automatically approves payment on a
             # completed HIT
-        self.hit_response = None;
+        self.hit_response = None
+        self.is_numeral = is_numeral
 
     def SubmitHIT(self, sandbox = 'false'):
         """
@@ -68,12 +69,21 @@ class HITGenerator(object):
         overview.append('FormattedContent', self.overview_content) 
         the_text = "Some arabic Words."
        # construct an answer field
-        fta = FreeTextAnswer()
-        ansp = AnswerSpecification(fta)
+        if self.is_numeral:
+            sels = []
+            for i in range(0,len(self.question_list)):
+                print self.question_list
+                sels.append((str(i+1),str(i+1)))
+                print sels
+            af = SelectionAnswer(min=1,max=len(sels) + 1,style='dropdown',selections=sels)
+        else:
+            af = FreeTextAnswer()
+        ansp = AnswerSpecification(af)
         ql = []
         for q in self.question_list:
             qc = QuestionContent()
-            qc.append('FormattedContent', u'<table><tr><td></td><td align="right" width="538">%s</td></tr></table>' % q[0])
+#            if not self.is_numeral:
+            qc.append('FormattedContent', u'<table><tr><td></td><td align="left" width="538">%s</td></tr></table>' % q[0])
             ql.append(Question(identifier=q[1],
                                content=qc,
                                answer_spec=ansp))
