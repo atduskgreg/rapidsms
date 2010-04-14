@@ -73,7 +73,7 @@ class App (rapidsms.app.App):
 		by the xtrans backend."""
 		
 		print "XTrans checking submissions."
-		msg_all = Translation.objects.filter(translation=None)
+		msg_all = Translation.objects.filter(complete=False,is_out=True)
 		msg_list = []
 		tmp_tracker = []
 		for m in msg_all:
@@ -129,6 +129,8 @@ class App (rapidsms.app.App):
 		hitsers = {}
 		if len(ret) == int(config.assignment_count):
 			#Do something with translated messages.
+			msg.is_out=False
+			msg.save()
 			for ans in ret:
 				for form in ans.answers[0]:
 					if config.numeric:
@@ -136,6 +138,7 @@ class App (rapidsms.app.App):
 					else:
 						answer = form.FreeText
 					added = 0
+					question_id = form.QuestionIdentifier
 					for k in hitsers.keys():
 						if k == question_id:
 							hitsers[k].append(answer)
@@ -160,11 +163,13 @@ class App (rapidsms.app.App):
 				ql.append((msg,qu_id))
 			else:
 				ql.append((msg.original_message,msg.id))
+				msg.is_out = True
+				msg.save()
 		#Textonic HITGenerator.  Loaded with settings from current MTurkConfiguration
-			options = [("This is an option","option_id")]
-			aws_key = str(config.aws_key)
-			aws_secret = str(config.aws_secret)
-			hitter = textonic.HITGenerator(question_list = ql,
+		options = [("This is an option","option_id")]
+		aws_key = str(config.aws_key)
+		aws_secret = str(config.aws_secret)
+		hitter = textonic.HITGenerator(question_list = ql,
 						       #answer_style = config.answer_style,
 						       #answer_options = config.answer_options,
 						       assignment_count = config.assignment_count,
@@ -182,11 +187,12 @@ class App (rapidsms.app.App):
 						       is_numeral = config.numeric
 						       )
 		#Submit HIT
-			sandbox = 'false'
-			if config.sandbox:
-				sandbox = 'true'
-			res = hitter.SubmitHIT(sandbox=sandbox)
-			print res[0].HITId
+		sandbox = 'false'
+		if config.sandbox:
+			sandbox = 'true'
+		res = hitter.SubmitHIT(sandbox=sandbox)
+		print res[0].HITId
+		if not qu_id:
 			for msg in msg_list:
 				msg.translator_id = res[0].HITId
 				msg.translation_method = 'mturk'
@@ -202,18 +208,39 @@ class App (rapidsms.app.App):
 				orig_msg = Translation.objects.get(id=h)
 				index = ord('A')		
 				translations = hitsers[h]
+				trans_list = []
+				if orig_msg.translation == None:
+					for t in translations:
+						d = {'id':h + '-' + chr(index),
+						     'value':t,
+						     'order':None}
+						trans_list.append(d)
+						index += 1
+					orig_msg.translation = repr(trans_list)
+					orig_msg.save()
 				config = MTurkConfig.objects.get(id=orig_msg.translator_config)
 				next = int(config.order) + 1
 				next_config = MTurkConfig.objects.filter(order=str(next))
-				if next_config:
+				if next_config:					
 					self.send_HIT(translations,next_config[0].order,qu_id=h)
 				else:
-					if len(translations) > 1:
-						for t in translations:
-							orig_msg.translation = orig_msg.translation + "|" + t
-					else:
-						orig_msg.translation = translations[0]
 					orig_msg.translated_at = datetime.now()
+					orig_msg.complete = True
+					orig_msg.save()
+
+	def order_translations(self,hitsers,qu_id):
+		msg = Translation.objects.get(id=qu_id)
+		translation = eval(msg.translation)
+		counts = {}
+		for h in hitsers:
+			counts[h] = 0
+		for h in hitsers:
+			for t in hitsers[h]:
+				counts[h] + int(t)
+			translation[h]['order'] = counts[h]
+		msg.translation = repr(translation)
+		msg.complete=True
+		msg.save()
 
 	def check_msg_load(self):
 		"""Check if the number of untranslated messages has reached the
@@ -221,7 +248,7 @@ class App (rapidsms.app.App):
 		config = MTurkConfig.objects.get(order="1")
 		if config:
 			m_cnt = int(config.message_count)
-			msgs = Translation.objects.filter(translator_id=None)[:m_cnt]
+			msgs = Translation.objects.filter(complete=False,is_out=False)[:m_cnt]
 			if len(msgs) == m_cnt:
 				return msgs
 			else:

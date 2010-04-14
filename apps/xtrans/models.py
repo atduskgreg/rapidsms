@@ -71,6 +71,8 @@ class Translation(models.Model):
     translator_id = models.CharField(max_length=64, blank=True,null=True,default=None)
     translator_config = models.PositiveIntegerField(blank=True,null=True,default=None)
     translation = models.TextField(null=True, default=None)
+    complete = models.BooleanField(null=False, default=False)
+    is_out = models.BooleanField(null=False, default=False)
 
     @classmethod
     def has_been_translated(self):
