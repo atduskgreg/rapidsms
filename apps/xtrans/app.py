@@ -68,7 +68,7 @@ class App (rapidsms.app.App):
 		#print args		
 
 	def check_submissions(self):
-		"""This method will select up to 5 untrabslated messages
+		"""This method will select up to 5 untranslated messages
 		and run their respective _check_ methods.  It is called
 		by the xtrans backend."""
 		
@@ -105,7 +105,7 @@ class App (rapidsms.app.App):
 		and message load."""
 		print "Submitting to Mechanical Turk"
 		msg_list = self.check_msg_load()
-#Make message list that consistes of tuples containing message text and id.
+                #Make message list that consists of tuples containing message text and id.
 		if(msg_list):
 			self.send_HIT(msg_list)
 
@@ -130,21 +130,23 @@ class App (rapidsms.app.App):
 		if len(ret) == int(config.assignment_count):
 			#Do something with translated messages.
 			for ans in ret:
-#				print "I am here"
-				answer_list = []
-				question_id = ans.answers[0][0].QuestionIdentifier
-				if config.numeric:
-					answer = ans.answers
-				answer = ans.answers[0][0].FreeText
-				added = 0
-				for k in hitsers.keys():
-					if k == question_id:
-						hitsers[k].append(answer)
-						added = 1
-				if added == 0:
-					hitsers[question_id] = [answer]
-		self.next_step(hitsers)
-				#orig_msg = Translation.objects.get(id=question_id)
+				for form in ans.answers[0]:
+					if config.numeric:
+						answer = form.SelectionIdentifier
+					else:
+						answer = form.FreeText
+					added = 0
+					for k in hitsers.keys():
+						if k == question_id:
+							hitsers[k].append(answer)
+							added = 1
+					if added == 0:
+						hitsers[question_id] = [answer]
+		if config.numeric:
+			self.next_step(hitsers, qu_id=msg.id)
+		else:
+			self.next_step(hitsers)
+		#orig_msg = Translation.objects.get(id=question_id)
 				#orig_msg.translation = answer
 				#orig_msg.save()
 				#print "Got an answer to - %s - %s" % (orig_msg.original_message, answer)
@@ -192,22 +194,26 @@ class App (rapidsms.app.App):
 				msg.save()
 
 
-	def next_step(self, hitsers):
-		for h in hitsers.keys():
-			orig_msg = Translation.objects.get(id=h)
-			translations = hitsers[h]
-			config = MTurkConfig.objects.get(id=orig_msg.translator_config)
-			next = int(config.order) + 1
-			next_config = MTurkConfig.objects.filter(order=str(next))
-			if next_config:
-				self.send_HIT(translations,next_config[0].order,qu_id=h)
-			else:
-				if len(translations) > 1:
-					for t in translations:
-						orig_msg.translation = orig_msg.translation + "|" + t
+	def next_step(self, hitsers, qu_id=None):
+		if qu_id:
+			self.order_translations(hitsers, qu_id)
+		else:
+			for h in hitsers.keys():
+				orig_msg = Translation.objects.get(id=h)
+				index = ord('A')		
+				translations = hitsers[h]
+				config = MTurkConfig.objects.get(id=orig_msg.translator_config)
+				next = int(config.order) + 1
+				next_config = MTurkConfig.objects.filter(order=str(next))
+				if next_config:
+					self.send_HIT(translations,next_config[0].order,qu_id=h)
 				else:
-					orig_msg.translation = translations[0]
-				orig_msg.translated_at = datetime.now()
+					if len(translations) > 1:
+						for t in translations:
+							orig_msg.translation = orig_msg.translation + "|" + t
+					else:
+						orig_msg.translation = translations[0]
+					orig_msg.translated_at = datetime.now()
 
 	def check_msg_load(self):
 		"""Check if the number of untranslated messages has reached the
