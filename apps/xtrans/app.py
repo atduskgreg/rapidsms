@@ -5,17 +5,23 @@ import rapidsms
 from models import *
 from datetime import datetime
 import translators
-
-import textonic
+#from wwlapi.wwl import wwl
 
 class App (rapidsms.app.App):
+
+#	def __init__(self):
+#		"""Initialize translators.  Was getting errors in start."""
+#		self.method = translators.default
+#		#Exclude self.debug to quiet.
+#		self.MTurkManager = MTurkManger(5,self.debug)
 
 	def start (self):
 		"""Configure your app in the start phase."""
 		#This is the default translation method from the tranlators.py file.
+#		self.wwl = wwl()
 		self.method = translators.default
-		pass
-	
+		self.MTurkManager = MTurkManager(5,debug=self.debug,router=self.router)
+
 	def parse (self, message):
 		"""Parse and annotate messages in the parse phase."""
 		pass
@@ -23,14 +29,13 @@ class App (rapidsms.app.App):
 	def handle (self, message):
 		"""Add your main application logic in the handle phase."""
 		#Take incoming message and create translation model.
-		print "Got Message"
 		if self.method != 'off':
 			entry = Translation(
 				phone_number = message.connection.identity,
 				original_message = message.text,
 				)
 			entry.save()
-			print "Submitting message"
+			self.debug("XTrans: new message received.")
 			#Check whether have enough messages to make a translation request.
 			self.submit_translation(entry.id)
 		return True
@@ -47,21 +52,15 @@ class App (rapidsms.app.App):
 	def stop (self):
 		"""Perform global app cleanup when the application is stopped."""
 		pass
-
-	def method(self):
-		"""Return the translation method currently being used by xtrans."""
-		print self.method
 		
 	def submit_translation(self, entry_id):
-		"""This method takes a list of messages to be translated and submits 
-		translation based on the current translation method."""
-		method = "_submit_" + self.method
-		#Check for corresponding submit method
-		if hasattr(self,method):
-			return getattr(self,method)(entry_id)
-		else:
-			return "Method does not exist"
-		
+		"""Request translation using the current method."""
+		if self.method:
+			method = "_submit_" + self.method
+	 	        #Check for corresponding submit method
+			if hasattr(self,method):
+				getattr(self,method)(entry_id)
+			
 	def ajax_GET_transmethod(*args):
 		"""Method to get called by ajax app, return the current 
 		translation method.  Doesn't do anything yet."""
@@ -71,195 +70,30 @@ class App (rapidsms.app.App):
 		"""This method will select up to 5 untranslated messages
 		and run their respective _check_ methods.  It is called
 		by the xtrans backend."""
-		
-		print "XTrans checking submissions."
-		msg_all = Translation.objects.filter(complete=False,is_out=True)
-		msg_list = []
-		tmp_tracker = []
-		for m in msg_all:
-			tmp_method = m.translator_id
-			if tmp_method in tmp_tracker:
-				#print "Already found this hit."
-				continue
-			msg_list.append(m)
-			tmp_tracker.append(tmp_method)
-			if len(msg_list) > 5:
-				break
-		if len(msg_list) > 0:
-			for msg in msg_list:
-				self.check_for_results(msg)
-			
-	def check_for_results(self, trans):
-		trans_method = "_check_" + trans.translation_method
-		if hasattr(self,trans_method):
-			return getattr(self,trans_method)(trans)
-				
-				
-	"""These methods are the translation functions.
-	They are called by name.  New _submit_ and _check_ methods
-	can be easily added for new translation facilities."""
+		self.debug("XTrans: check_submissions called.")
+		try:
+			method = '_check_' + self.method
+			if hasattr(self,method):
+				getattr(self,method)()
+		#Silly workaround for check_submissions being called before start()
+		except AttributeError:
+			self.debug("check_submissions called before init.")
 
 	def _submit_mturk(self,entry_id):
-		"""This method creates an instance of the textonic HITGenerator
-		and generated and submits a hit based on the current MTurkConfig 
-		and message load."""
-		print "Submitting to Mechanical Turk"
-		msg_list = self.check_msg_load()
-                #Make message list that consists of tuples containing message text and id.
-		if(msg_list):
-			self.send_HIT(msg_list)
+		"""Notify the Mechanical Turk Manager of a new message."""
+		self.debug("Notifying Mechanical Turk of new message.")
+		self.MTurkManager.new_message(entry_id)
 
-	def _check_mturk(self,msg):
+	def _check_mturk(self):
 		"""Method to check Mechanical Turk for completed HIT's.
 		This method currently lack a way of deciding which translations
 		to keep.  Each completed Hit contain message_count (default 5)
 		translations from assignment_count (default 5) turkers."""
-		#load MTurkConfig of current msg
-		config = MTurkConfig.objects.get(id=msg.translator_config)
-		print "Config open.  %s" % (config.title)
-		sandbox = 'false'
-		if config.sandbox:
-			print "Playing in Sandbox"
-			sandbox = 'true'
-		#Check whether HIT has been completed
-		#The str() call is a workaround for the python2.6 hmac module which throws an error
-		#if gets an ascii string from unicode input even though hmac always returns ascii
-		hit_ret = textonic.HITRetriever(str(config.aws_key),str(config.aws_secret),msg.translator_id)
-		ret = hit_ret.RetrieveHIT(sandbox=sandbox)
-		hitsers = {}
-		if len(ret) == int(config.assignment_count):
-			#Do something with translated messages.
-			msg.is_out=False
-			msg.save()
-			for ans in ret:
-				for form in ans.answers[0]:
-					if config.numeric:
-						answer = form.SelectionIdentifier
-					else:
-						answer = form.FreeText
-					added = 0
-					question_id = form.QuestionIdentifier
-					for k in hitsers.keys():
-						if k == question_id:
-							hitsers[k].append(answer)
-							added = 1
-					if added == 0:
-						hitsers[question_id] = [answer]
-		if config.numeric:
-			self.next_step(hitsers, qu_id=msg.id)
-		else:
-			self.next_step(hitsers)
-		#orig_msg = Translation.objects.get(id=question_id)
-				#orig_msg.translation = answer
-				#orig_msg.save()
-				#print "Got an answer to - %s - %s" % (orig_msg.original_message, answer)
-
-	def send_HIT(self,msg_list,order="1",qu_id=None):
-		config = MTurkConfig.objects.filter(order=str(order))[0]
-		print config
-		ql = []
-		for msg in msg_list:
-			if(qu_id):
-				ql.append((msg,qu_id))
-			else:
-				ql.append((msg.original_message,msg.id))
-				msg.is_out = True
-				msg.save()
-		#Textonic HITGenerator.  Loaded with settings from current MTurkConfiguration
-		options = [("This is an option","option_id")]
-		aws_key = str(config.aws_key)
-		aws_secret = str(config.aws_secret)
-		hitter = textonic.HITGenerator(question_list = ql,
-						       #answer_style = config.answer_style,
-						       #answer_options = config.answer_options,
-						       assignment_count = config.assignment_count,
-						       #message_count = config.message_count,
-						       overview_content = config.overview,
-						       answer_options = options,
-						       title = config.title,
-						       description = config.description,
-						       keywords = config.keywords,
-						       reward = config.reward,
-						       #lifetime = config.lifetime,
-						       #duration = config.duration,
-						       AWS_KEY =  aws_key,
-						       AWS_SECRET = aws_secret,
-						       is_numeral = config.numeric
-						       )
-		#Submit HIT
-		sandbox = 'false'
-		if config.sandbox:
-			sandbox = 'true'
-		res = hitter.SubmitHIT(sandbox=sandbox)
-		print res[0].HITId
-		if not qu_id:
-			for msg in msg_list:
-				msg.translator_id = res[0].HITId
-				msg.translation_method = 'mturk'
-				msg.translator_config = config.id
-				msg.save()
-
-
-	def next_step(self, hitsers, qu_id=None):
-		if qu_id:
-			self.order_translations(hitsers, qu_id)
-		else:
-			for h in hitsers.keys():
-				orig_msg = Translation.objects.get(id=h)
-				index = ord('A')		
-				translations = hitsers[h]
-				trans_list = []
-				if orig_msg.translation == None:
-					for t in translations:
-						d = {'id':h + '-' + chr(index),
-						     'value':t,
-						     'order':None}
-						trans_list.append(d)
-						index += 1
-					orig_msg.translation = repr(trans_list)
-					orig_msg.save()
-				config = MTurkConfig.objects.get(id=orig_msg.translator_config)
-				next = int(config.order) + 1
-				next_config = MTurkConfig.objects.filter(order=str(next))
-				if next_config:					
-					self.send_HIT(translations,next_config[0].order,qu_id=h)
-				else:
-					orig_msg.translated_at = datetime.now()
-					orig_msg.complete = True
-					orig_msg.save()
-
-	def order_translations(self,hitsers,qu_id):
-		msg = Translation.objects.get(id=qu_id)
-		translation = eval(msg.translation)
-		counts = {}
-		for h in hitsers:
-			counts[h] = 0
-		for h in hitsers:
-			for t in hitsers[h]:
-				counts[h] + int(t)
-			translation[h]['order'] = counts[h]
-		msg.translation = repr(translation)
-		msg.complete=True
-		msg.save()
-
-	def check_msg_load(self):
-		"""Check if the number of untranslated messages has reached the
-		desired amount and initiate a translation if so."""
-		config = MTurkConfig.objects.get(order="1")
-		if config:
-			m_cnt = int(config.message_count)
-			msgs = Translation.objects.filter(complete=False,is_out=False)[:m_cnt]
-			if len(msgs) == m_cnt:
-				return msgs
-			else:
-				print "Have %d messages.  Need %d" % (len(msgs),m_cnt)
-				print "Not enough messages"
-				return []
-		else:
-			return []
+		self.debug("XTrans: checking submissions.")
+		self.MTurkManager.check_submissions()
 	
-#	def _submit_wwl(self,msg_list):
-#		return 1
+#	def _submit_wwl(self,entry_id):
+#		wwl.get()
 		
 #	def _check_wwl(self,msg_id):
 #		return 1

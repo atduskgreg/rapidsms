@@ -18,20 +18,21 @@ class Backend(Backend):
     _title = "xtrans"
 
     def configure(self, *args, **kwargs):
-        self.interval = 30
+        self.interval = 20
         self.timeout = 10
-        print "XTrans ON"
+        self.log_level = 'debug'
+        self.router.log(self.log_level,"XTrans backend ON")
 
     def run(self):
-        while self.running:
-            print "XTrans backend says hello."
+        while self._running:
+            self.router.log(self.log_level,"XTrans backend says hello.")
             for app in self.router.apps:
                 if app.slug == 'xtrans':
                     app.check_submissions()
             time.sleep(self.interval)
 
     def start(self):
-        print "MTurk starting."
+        self.router.log(self.log_level,"XTrans backend starting.")
         backend.Backend.start(self)
 
     def stop(self):
