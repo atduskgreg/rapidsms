@@ -59,19 +59,31 @@ def config_view(req,id=None):
         else:
             content = "Hello, No Content"
     else:
-        c = MTurkConfig.objects.filter(count="0")
+        c = MTurkConfig.objects.filter(current=True)
         if c:
-            if c[0].overview is not None:            
-                content = c[0].overview
+            if c[0].overview_1st_phase is not None:            
+                content1 = c[0].overview_1st_phase
             else:
-                content = "Hello.  No Content."
+                content1 = "Hello.  No Content."
+            if c[0].overview_2nd_phase is not None:
+                content2 = c[0].overview_2nd_phase
+            else:
+                content2 = "No Content"
         else:
             c = MTurkConfig()
             f = ConfigForm(instance=c)
             template_path = "xtrans/mturk_config.html"
             return render_to_response(req, template_path, {'form':f,'edit':None})
+    mc = c[0].message_count
+    ac1 = c[0].assignment_count_1st_phase
+    r1 = c[0].reward_1st_phase
+    ac2 = c[0].assignment_count_2nd_phase
+    r2 = c[0].reward_2nd_phase
     template_path = "xtrans/mturk_view.html"
-    return render_to_response(req, template_path, {'content':content})
+    return render_to_response(req, template_path, {'content1':content1,
+                                                   'content2':content2,
+                                                   'mc':mc,'ac1':ac1,'r1':r1,
+                                                   'ac2':ac2,'r2':r2})
         #return HttpResponse(content)
 
 def config_index(req):
@@ -132,7 +144,14 @@ def messages_index(req):
 def messages_view(req,id):
     template_path = "xtrans/messages/view.html"
     msg = Translation.objects.get(id=id)
-    return render_to_response(req, template_path, {'msg':msg})
+    translation = MTurkTranslation.objects.filter(translation_id = msg.id)[0]
+    pn = msg.phone_number
+    om = msg.original_message
+    ct = msg.translation
+    co = translation.cost
+    ti = translation.get_time()
+    return render_to_response(req, template_path, {'pn':pn,'om':om,'ct':ct,'co':co,
+                                                   'ti':ti})
 
 def messages_delete(req,id):
     msg = Translation.objects.get(id=id)

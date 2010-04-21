@@ -19,8 +19,9 @@ class App (rapidsms.app.App):
 		"""Configure your app in the start phase."""
 		#This is the default translation method from the tranlators.py file.
 #		self.wwl = wwl()
+		self.debug("MTurk: Init message.")
 		self.method = translators.default
-		self.MTurkManager = MTurkManager(5,debug=self.debug,router=self.router)
+		self.MTurkManager = MTurkManager(50,debug=self.debug,router=self.router)
 
 	def parse (self, message):
 		"""Parse and annotate messages in the parse phase."""
@@ -38,7 +39,8 @@ class App (rapidsms.app.App):
 			self.debug("XTrans: new message received.")
 			#Check whether have enough messages to make a translation request.
 			self.submit_translation(entry.id)
-		return True
+		#backend = self.router.get_backend('pygsm')
+		#backend.message('+19173183238','sending you a message').send()
 
 	def cleanup (self, message):
 		"""Perform any clean up after all handlers have run in the

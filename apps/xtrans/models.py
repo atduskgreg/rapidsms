@@ -7,6 +7,7 @@ from django.contrib.contenttypes import generic
 from django.forms import ModelForm
 from datetime import datetime
 from rapidsms.message import Message
+from rapidsms.connection import Connection
 
 import textonic
 
@@ -172,7 +173,14 @@ class MTurkManager():
         if len(unsent_translations) >= message_count:
             if self.debug:
                 self.debug("MTurkManager: Initiating new HIT.")
-            self.send_HIT(1,config,translations=unsent_translations)
+            ret = self.send_HIT(1,config,translations=unsent_translations)
+            set_master = False
+            for u in unsent_translations:
+                u.HIT_id_1st_phase = ret
+                if not set_master:
+                    u.master = True
+                    set_master = True
+                u.save()
         else:
             if self.debug:
                 self.debug("MTurkManager:  Need %d more messages for HIT.",
@@ -221,22 +229,30 @@ class MTurkManager():
                 count = 0
                 for a in ret[k]:
                     count += int(a)
-                for i in hit:
-                    if i['id'] == k:
-                        i['count'] = count
-            hit.set_best_translation()
+                for t in translations:
+                    if t['id'] == k:
+                        t['count'] = count
+            hit.intermediary_translations = repr(translations)
+            hit.end_time = datetime.now()
             hit.complete = True
+            curr_cost = float(hit.cost)
+            config = MTurkConfig.objects.get(id=hit.configuration)
+            curr_cost += (float(config.reward_2nd_phase)*float(config.assignment_count_2nd_phase))
+            hit.cost = str(curr_cost)
+            hit.save()
+            hit.set_best_translation()
             hit.save()
             if self.debug:
                 self.debug("MTurkManager: Saved new translation.")
             if self.reply:
-                message = Translation.objects.get(hit.translation_id)
+                message = Translation.objects.get(id=hit.translation_id)
                 if message.has_been_translated:
-                    if self.debug:
-                        self.debug("MTurkManager: Sending translation to original sender.")
                     outgoing = "Your translation: " + message.translation
-                    backend = self.router.get_backend('gsm')
+                    backend = self.router.get_backend('pygsm')
+                    if self.debug:
+                        self.debug("MTurkManager: Sending %s to original sender - %s.",outgoing,message.phone_number)
                     backend.message(message.phone_number,outgoing).send()
+                    #backend.message(message.phone_number,outgoing).send()
         else:
             if self.debug:
                 self.debug("MTurkManager: making intermediary translations.")
@@ -251,6 +267,11 @@ class MTurkManager():
                                              'count':None})
                 h = MTurkTranslation.objects.get(id=k)
                 h.intermediary_translations = repr(translation_list)
+                config = MTurkConfig.objects.get(id=h.configuration)
+                cost_per_message = float(config.reward_1st_phase)/len(ret) * float( 
+                    config.assignment_count_1st_phase)
+                curr_cost = float(h.cost) 
+                h.cost = str(curr_cost + cost_per_message)
                 h.second_phase = True
                 h.save()
                 self.make_second_HIT(h)
@@ -295,8 +316,11 @@ class MTurkManager():
             reward = config.reward_1st_phase
             is_numeral = False
         else:
+            id = question_list[0][1].split('-')[0]
+            msg = Translation.objects.get(id=id)
+            question_for_ranking = "<p>%s</p>" % (msg.original_message)
             assignment_count = config.assignment_count_2nd_phase
-            overview = config.overview_2nd_phase
+            overview = config.overview_2nd_phase + question_for_ranking
             title = config.title_2nd_phase
             description = config.description_2nd_phase
             keywords = config.keywords_2nd_phase
@@ -323,22 +347,9 @@ class MTurkManager():
             sandbox = 'true'
         ret = hitter.SubmitHIT(sandbox=sandbox)
         if(ret):
-            #If phase 1 set master.
-            if phase == 1:
-                set_master = False
-                for t in translations:
-                    t.HIT_id_1st_phase = ret[0].HITId
-                    if not set_master:
-                        t.master = True
-                        set_master = True
-                    t.save()
-                    if self.debug:
-                        self.debug("MTurkManager: new phase 1 HIT - %s",ret[0].HITId)
-                    return ret[0].HITId
-            else:
-                if self.debug:
-                    self.debug("MTurkManager: new phase 2 HIT - %s",ret[0].HITId)
-                return ret[0].HITId
+            if self.debug:
+                self.debug("MTurkManager: new phase 2 HIT - %s",ret[0].HITId)
+            return ret[0].HITId
         else:
             #HIT send failed
             if self.debug:
@@ -380,11 +391,7 @@ class MTurkManager():
         else:
             if self.debug:
                 self.debug("MTurkConfig: HIT not complete.")
-        if self.debug:
-            self.debug("MTurkManager: got response - %s",repr(hitsers))
         return hitsers
-        
-    
-            
+                    
             
             

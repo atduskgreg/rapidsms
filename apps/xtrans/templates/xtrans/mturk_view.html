@@ -3,6 +3,16 @@
 {% block content %}
 </p> Click <a href="/xtrans/">here </a>Return to Main Menu</a></p>
 {% autoescape off %}
-{{ content }}
+<p>Phase 1 Overview:</p>
+{{ content1 }}
+<p>Phase 1 has the following parameters:</p>
+<p>Message Count: {{ mc }} - This is the number of messages that will be placed in a single HIT.</p>
+<p>Assignment Count: {{ ac1 }} - This is number as workers who will perform the HIT.</p>
+<p>Reward: {{ r1 }} = This is the amount in cents that each worker will be paid.</p>
+<p>Phase 2 Overview:</p>
+{{ content2 }}
+<p>Phase 2 has the following parameters:</p>
+<p>Assignment Count: {{ ac2 }} - This is number as workers who will perform the HIT.</p>
+<p>Reward: {{ r2 }} = This is the amount in cents that each worker will be paid.</p>
 {% endautoescape %}
 {% endblock %}
